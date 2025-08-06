@@ -32,6 +32,7 @@ void ConfigManager::init() {
     }
     
     Serial.println("ConfigManager initialized with default values");
+    Serial.printf("Gateway ID: %s\n", GATEWAY_ID.c_str());
     printCurrentConfig();
 }
 
@@ -42,6 +43,19 @@ bool ConfigManager::processConfigCommand(const String& jsonString) {
     if (error) {
         Serial.print("JSON Parse Error: ");
         Serial.println(error.c_str());
+        return false;
+    }
+    
+    // Check if target field exists and matches our gateway ID
+    if (!doc.containsKey("target")) {
+        Serial.println("ERROR: Missing 'target' field in configuration command");
+        return false;
+    }
+    
+    String targetGateway = doc["target"].as<String>();
+    if (targetGateway != GATEWAY_ID) {
+        Serial.printf("ERROR: Command target '%s' does not match this gateway '%s'\n", 
+                     targetGateway.c_str(), GATEWAY_ID.c_str());
         return false;
     }
     
@@ -205,6 +219,7 @@ void ConfigManager::updateBLEScannerSettings() {
 
 void ConfigManager::printCurrentConfig() {
     Serial.println("\n=== Current Configuration ===");
+    Serial.printf("GATEWAY_ID: %s\n", GATEWAY_ID.c_str());
     Serial.printf("SCAN_TIME: %d\n", runtime_SCAN_TIME);
     Serial.printf("SCAN_INTERVAL: %d\n", runtime_SCAN_INTERVAL);
     Serial.printf("SCAN_WINDOW: %d\n", runtime_SCAN_WINDOW);

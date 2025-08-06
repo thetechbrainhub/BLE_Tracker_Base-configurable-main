@@ -175,13 +175,20 @@ src/
 1. Connect your ESP32 to your computer via USB
 2. Click "Upload" in PlatformIO  
 3. Open the Serial Monitor (115200 baud) to see debug output
-4. The system will start scanning for BLE devices immediately
+4. You should see the gateway initialization:
+   ```
+   Gateway ID: BLE001
+   JSON Command Format: {"target":"BLE001","parameter":value}
+   Gateway targeting system: Active
+   Ready to receive configuration commands via Meshtastic UART...
+   ```
 
 #### Initial Setup Steps
 1. Flash the firmware to ESP32
 2. Connect to Meshtastic device via UART  
 3. Monitor serial output for device detection
-4. Send JSON configuration commands as needed
+4. Send test command: `{"target":"BLE001","distance_threshold":5.0}`
+5. Verify acknowledgment: `{"ack":"BLE001","ok":true}`
 
 #### Runtime Operation
 1. System automatically scans for BLE devices
@@ -189,6 +196,7 @@ src/
 3. Sends updates when beacon status changes
 4. Receives configuration commands from Meshtastic
 5. All settings persist through power cycles
+6. Target-based commands prevent cross-gateway interference
 
 ## Configuration Tutorial
 
@@ -269,13 +277,21 @@ This prevents configuration commands from affecting the wrong gateway in multi-g
 
 This is where the system becomes really powerful. You can change any setting by sending simple text messages through your Meshtastic network.
 
-### How Remote Configuration Works
+## How Remote Configuration Works
 
-1. You send a JSON command via Meshtastic (from your phone, computer, or another device)
-2. Your Meshtastic device receives it and forwards it to the ESP32 via UART
-3. The ESP32 parses the command, updates the setting, and saves it permanently
-4. The ESP32 sends back a confirmation that the change was successful
-5. The new setting takes effect immediately - no restart needed
+1. **You send a JSON command via Meshtastic** (from your phone, computer, or another device)
+2. **Your Meshtastic device receives it** and forwards it to the ESP32 via UART
+3. **The ESP32 parses the JSON** and checks if the target matches its Gateway ID
+4. **If the target matches**, it processes the command and updates the setting
+5. **The setting is saved permanently** to ESP32's Non-Volatile Storage (NVS)
+6. **The ESP32 sends back a confirmation** via Meshtastic: `{"ack":"BLE001","ok":true}`
+7. **The new setting takes effect immediately** - no restart needed
+
+**Real Example:**
+- Send: `{"target":"BLE001","distance_threshold":2.5}` 
+- Gateway BLE001 processes command and increases tracking range to 2.5 meters
+- Receive: `{"ack":"BLE001","ok":true}`
+- Setting is active immediately and survives power cycles
 
 ### JSON Command Format
 
@@ -369,12 +385,26 @@ Commands are only processed by the targeted gateway:
 
 ### System Responses
 
-The system confirms every command and identifies which gateway processed it:
+The system confirms every command with a short acknowledgment message identifying which gateway processed it:
 
-**Success**: `{"status":"ok","gateway":"BLE001","message":"config updated"}`
-**Error**: `{"status":"error","gateway":"BLE001","message":"invalid config"}`
+**Success**: `{"ack":"BLE001","ok":true}`  
+**Error**: `{"ack":"BLE001","ok":false}`
 
-If you get an error, check your JSON syntax and make sure the parameter name and target gateway are correct.
+These compact responses are optimized for Meshtastic's message size limitations while providing clear confirmation of which gateway executed the command.
+
+**What you'll see in the serial monitor when a command is processed:**
+```
+========================================
+UART-DEBUG: Received from Meshtastic:
+cb70: {"target": "BLE001", "distance_threshold": 2.5}
+========================================
+UART-DEBUG: Extracted JSON: {"target": "BLE001", "distance_threshold": 2.5}
+UART-DEBUG: Message for this gateway (BLE001) - processing...
+Updated DISTANCE_THRESHOLD to: 2.50
+Configuration saved to NVS
+UART-DEBUG: Configuration updated successfully!
+UART-DEBUG: Acknowledgment sent: {"ack":"BLE001","ok":true}
+```
 
 ## Data Output Tutorial
 
@@ -517,13 +547,46 @@ Each gateway can be optimized for its specific environment and use case.
 
 ### Problem: No Beacons Detected
 
-**Symptoms**: Debug output shows "0 innerhalb Schwellenwert" (0 within threshold)
+**Symptoms**: Debug output shows "0 within threshold"
 
 **Solutions**:
 1. **Check distance threshold**: `{"target": "BLE001", "distance_threshold": 10.0}` to test with larger range
 2. **Disable MAC filtering temporarily**: `{"target": "BLE001", "mac_enable": false}` to see all devices
 3. **Verify beacons are advertising**: Use a phone BLE scanner app to confirm
 4. **Check TX power calibration**: Try `{"target": "BLE001", "tx_power": -50}` or `{"target": "BLE001", "tx_power": -70}`
+
+### Problem: Configuration Commands Not Working
+
+**Symptoms**: Send command but no response or "Message not for this gateway"
+
+**Solutions**:
+1. **Check target field**: Ensure `"target":"BLE001"` matches your gateway exactly
+2. **Verify JSON syntax**: Use online JSON validator - common errors:
+   - Missing quotes: `{"target": BLE001}` ❌ vs `{"target": "BLE001"}` ✅
+   - Wrong target: `{"target": "BLE999"}` when gateway is `BLE001`
+3. **Check Meshtastic connection**: Verify UART wiring (TX↔RX, RX↔TX)
+4. **Monitor serial output**: Look for `UART-DEBUG: Received from Meshtastic:` messages
+
+### Problem: Commands Received But Ignored
+
+**Symptoms**: See "UART-DEBUG: Received" but "Message not for this gateway"
+
+**Solutions**:
+1. **Check Gateway ID**: Your command target must exactly match the gateway's ID
+2. **Case sensitivity**: `"BLE001"` ≠ `"ble001"` - use exact case
+3. **Verify gateway startup**: Serial monitor should show `Gateway ID: BLE001` on boot
+
+### Problem: JSON Parse Errors
+
+**Symptoms**: "JSON Parse Error" in debug output
+
+**Solutions**:
+1. **Validate JSON syntax**: Use tools like jsonlint.com
+2. **Common mistakes**:
+   - Missing commas: `{"target":"BLE001""param":1}` ❌
+   - Extra commas: `{"target":"BLE001","param":1,}` ❌  
+   - Wrong quotes: `{'target':'BLE001'}` ❌
+   - Missing brackets: `"target":"BLE001","param":1` ❌
 
 ### Problem: Distance Readings Are Wrong
 

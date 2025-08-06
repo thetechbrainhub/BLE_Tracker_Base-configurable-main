@@ -28,6 +28,8 @@ void setup() {
   Serial.println("\n=====================================================");
   Serial.println("BLE Beacon Scanner mit dynamischer Konfiguration");
   Serial.println("=====================================================");
+  Serial.printf("Gateway ID: %s\n", GATEWAY_ID.c_str());
+  Serial.println("JSON Command Format: {\"target\":\"" + String(GATEWAY_ID) + "\",\"parameter\":value}");
   Serial.printf("Distanz-Schwellenwert: %.1f Meter\n", ConfigManager::getDistanceThreshold());
   Serial.printf("TX Power: %d dBm @ 1m\n", ConfigManager::getTxPower());
   Serial.printf("Environmental Factor: %.1f (%.1f=Freiraum, >2.0=mit Hindernissen)\n", 
@@ -38,9 +40,9 @@ void setup() {
   Serial.printf("Beacon Timeout: %d Sekunden\n", ConfigManager::getBeaconTimeout());
   Serial.printf("UART für Meshtastic: TX=%d, RX=%d, Baudrate=%d\n", UART_TX_PIN, UART_RX_PIN, UART_BAUD_RATE);
   Serial.println("Beacon-Verschwinden-Erkennung: Aktiv");
-  Serial.printf("Gateway ID: %s\n", GATEWAY_ID.c_str());
-  Serial.println("JSON Command Format: {\"target\":\"" + String(GATEWAY_ID) + "\",\"parameter\":value}");
-  Serial.println("Dynamic Konfiguration über Meshtastic: Aktiv");
+  Serial.println("Gateway Targeting System: Aktiv");
+  Serial.println("Dynamische Konfiguration über Meshtastic: Aktiv");
+  Serial.println("Bereit zum Empfang von Konfigurationsbefehlen über Meshtastic UART...");
   
   // Initialize device filter (now managed by ConfigManager)
   parseDeviceFilter();
@@ -53,7 +55,6 @@ void setup() {
   Serial.println("BLE Scanner initialisiert.");
   
   Serial.println("Starte Scannen nach BLE-Geräten in der Umgebung...");
-  Serial.println("Bereit zum Empfang von Konfigurationsbefehlen über Meshtastic UART...");
   
   // Initialize tracking variables
   initBeaconTracking();
@@ -114,8 +115,8 @@ void loop() {
       Serial.println("Kein Beacon aktuell verfolgt");
     }
     
-    // Show current threshold for reference
-    Serial.printf("Aktueller Distanz-Schwellenwert: %.2fm\n", ConfigManager::getDistanceThreshold());
+    // Show current threshold and gateway info for reference
+    Serial.printf("Gateway: %s, Distanz-Schwellenwert: %.2fm\n", GATEWAY_ID.c_str(), ConfigManager::getDistanceThreshold());
   }
   
   // Output detailed JSON at intervals to serial
