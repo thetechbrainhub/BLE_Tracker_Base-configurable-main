@@ -742,4 +742,23 @@ This Software is licensed, not sold. All rights not expressly granted herein are
 - You may NOT redistribute or sublicense the Software in any form
 - You may NOT remove or alter any copyright notices or proprietary labels
 
-**
+**PERMISSIONS:**
+- Personal use and evaluation are permitted for legitimate testing purposes only
+- Academic research use requires prior written permission from the copyright holder
+- Any commercial use, including but not limited to integration into products or services, requires explicit written license agreement
+
+**DISCLAIMER:**
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL CHRISTIAN ZEH BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Contact for Licensing
+
+For licensing inquiries, commercial use permissions, or any questions regarding this software:
+
+**Christian Zeh**  
+Email: thetechbrainhub@gmail.com
+
+All licensing agreements must be in writing and signed by Christian Zeh to be valid.
+
+---
+
+*This license is governed by German law. Any disputes shall be resolved exclusively in German courts.*
