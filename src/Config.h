@@ -28,6 +28,9 @@ static constexpr int WINDOW_SIZE = 5;              // Anzahl der Werte für den 
 // Beacon Tracking Parameter
 static constexpr int BEACON_TIMEOUT_SECONDS = 10;  // Timeout in Sekunden für Beacon-Tracking
 
+// Gateway Identification
+static const String GATEWAY_ID = "BLE001";         // Unique identifier for this gateway - change for multiple gateways
+
 // Gerätefilter - Liste der MAC-Adressen, die überwacht werden sollen
 // Leere String = Alle Geräte überwachen, ansonsten komma-getrennte Liste, z.B. "e0:80:8f:1e:13:28,e4:b3:23:c1:f6:2a"
 // WHOOP e0:80:8f:1e:13:28, NGIS 004 08:05:04:03:02:01, BLE MPU Test e4:b0:63:41:7d:5a

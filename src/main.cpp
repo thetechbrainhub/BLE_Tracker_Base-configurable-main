@@ -38,7 +38,9 @@ void setup() {
   Serial.printf("Beacon Timeout: %d Sekunden\n", ConfigManager::getBeaconTimeout());
   Serial.printf("UART für Meshtastic: TX=%d, RX=%d, Baudrate=%d\n", UART_TX_PIN, UART_RX_PIN, UART_BAUD_RATE);
   Serial.println("Beacon-Verschwinden-Erkennung: Aktiv");
-  Serial.println("Dynamische Konfiguration über Meshtastic: Aktiv");
+  Serial.printf("Gateway ID: %s\n", GATEWAY_ID.c_str());
+  Serial.println("JSON Command Format: {\"target\":\"" + String(GATEWAY_ID) + "\",\"parameter\":value}");
+  Serial.println("Dynamic Konfiguration über Meshtastic: Aktiv");
   
   // Initialize device filter (now managed by ConfigManager)
   parseDeviceFilter();

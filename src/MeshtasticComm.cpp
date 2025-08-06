@@ -48,25 +48,32 @@ void checkForMeshtasticCommands() {
         jsonData = receivedData.substring(jsonStart, jsonEnd + 1);
         Serial.println("UART-DEBUG: Extracted JSON: " + jsonData);
         
-        Serial.println("UART-DEBUG: Processing as JSON config command...");
-        
-        bool success = ConfigManager::processConfigCommand(jsonData);
-        
-        if (success) {
-          Serial.println("UART-DEBUG: Configuration updated successfully!");
+        // Check if message is for this gateway
+        String targetCheck = "\"target\":\"" + String(GATEWAY_ID) + "\"";
+        if (jsonData.indexOf(targetCheck) >= 0) {
+          Serial.println("UART-DEBUG: Message for this gateway (" + String(GATEWAY_ID) + ") - processing...");
           
-          // Send acknowledgment back to Meshtastic
-          String ack = "{\"status\":\"ok\",\"message\":\"config updated\"}";
-          MeshtasticSerial.println(ack);
-          Serial.println("UART-DEBUG: Acknowledgment sent: " + ack);
+          bool success = ConfigManager::processConfigCommand(jsonData);
           
+          if (success) {
+            Serial.println("UART-DEBUG: Configuration updated successfully!");
+            
+            // Send acknowledgment back to Meshtastic
+            String ack = "{\"status\":\"ok\",\"gateway\":\"" + String(GATEWAY_ID) + "\",\"message\":\"config updated\"}";
+            MeshtasticSerial.println(ack);
+            Serial.println("UART-DEBUG: Acknowledgment sent: " + ack);
+            
+          } else {
+            Serial.println("UART-DEBUG: Configuration update failed!");
+            
+            // Send error acknowledgment
+            String error = "{\"status\":\"error\",\"gateway\":\"" + String(GATEWAY_ID) + "\",\"message\":\"invalid config\"}";
+            MeshtasticSerial.println(error);
+            Serial.println("UART-DEBUG: Error response sent: " + error);
+          }
         } else {
-          Serial.println("UART-DEBUG: Configuration update failed!");
-          
-          // Send error acknowledgment
-          String error = "{\"status\":\"error\",\"message\":\"invalid config\"}";
-          MeshtasticSerial.println(error);
-          Serial.println("UART-DEBUG: Error response sent: " + error);
+          Serial.println("UART-DEBUG: Message not for this gateway (target: " + String(GATEWAY_ID) + ") - ignoring");
+          Serial.println("UART-DEBUG: Expected target field: " + targetCheck);
         }
       } else {
         Serial.println("UART-DEBUG: No valid JSON found in received data - ignoring");

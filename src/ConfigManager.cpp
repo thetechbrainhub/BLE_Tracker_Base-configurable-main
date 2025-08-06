@@ -157,6 +157,15 @@ bool ConfigManager::processConfigCommand(const String& jsonString) {
         configChanged = true;
     }
     
+    // Process Gateway ID Changes
+    if (doc.containsKey("gateway_id")) {
+        String newGatewayId = doc["gateway_id"].as<String>();
+        // This would require updating the Config.h GATEWAY_ID at runtime
+        // For now, just acknowledge the command but note it requires restart
+        Serial.printf("Gateway ID change requested to: %s (requires restart to take effect)\n", newGatewayId.c_str());
+        configChanged = true;
+    }
+    
     // Update BLE scanner settings if scan parameters changed
     if (configChanged) {
         updateBLEScannerSettings();

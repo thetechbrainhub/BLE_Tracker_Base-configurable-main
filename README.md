@@ -1,4 +1,7 @@
-# BLE Beacon Scanner with Dynamic Configuration
+A: Check your JSON syntax carefully. Common issues:
+- Missing quotes around strings: `{"target": "BLE001", "mac_add": aa:bb:cc:dd:ee:ff}` (wrong) vs `{"target": "BLE001", "mac_add": "aa:bb:cc:dd:ee:ff"}` (correct)
+- Wrong parameter names: `{"target": "BLE001", "threshold": 2.0}` (wrong) vs `{"target": "BLE001", "distance_threshold": 2.0}` (correct)
+- Wrong target gateway: `{"target": "BLE999", "scan_time": 3}` when your gateway is `BLE001`# BLE Beacon Scanner with Dynamic Configuration
 
 A comprehensive BLE beacon tracking system for ESP32 with real-time configuration via Meshtastic UART communication. This tutorial will guide you through understanding, setting up, and using this advanced beacon tracking system, even if you're new to ESP32 or BLE technology.
 
@@ -247,6 +250,21 @@ DEVICE_FILTER = "08:05:04:03:02:01,0d:03:0a:02:0e:01,e4:b0:63:41:7d:5a"
 
 Every Bluetooth device has a unique MAC address (like a serial number). You can configure the system to only track certain devices and ignore others.
 
+### Gateway Configuration
+
+By default, the system uses Gateway ID `"BLE001"`. This identifier must be included in all configuration commands to ensure they are processed by the correct gateway.
+
+```cpp
+GATEWAY_ID = "BLE001"                // Unique identifier for this gateway
+```
+
+**For multiple gateways**, simply change the Gateway ID in `Config.h` for each device:
+- Gateway 1: `GATEWAY_ID = "BLE001"`
+- Gateway 2: `GATEWAY_ID = "BLE002"`
+- Gateway 3: `GATEWAY_ID = "BLE003"`
+
+This prevents configuration commands from affecting the wrong gateway in multi-gateway installations.
+
 ## Remote Configuration Tutorial
 
 This is where the system becomes really powerful. You can change any setting by sending simple text messages through your Meshtastic network.
@@ -261,16 +279,33 @@ This is where the system becomes really powerful. You can change any setting by 
 
 ### JSON Command Format
 
-Commands are sent as simple JSON messages. JSON is a standard format that looks like this:
+Commands are sent as simple JSON messages with a **target gateway identifier**. This prevents commands from being processed by the wrong gateway in multi-gateway setups.
 
 ```json
-{"parameter_name": value}
+{"target": "BLE001", "parameter_name": value}
 ```
 
-For example:
-- `{"distance_threshold": 2.5}` - Track beacons up to 2.5 meters away
-- `{"scan_time": 3}` - Scan for 3 seconds instead of 5
-- `{"mac_add": "aa:bb:cc:dd:ee:ff"}` - Start tracking a new beacon
+**Command structure**:
+- `target`: Gateway identifier (must match the gateway's `GATEWAY_ID`)
+- `parameter_name`: The configuration parameter to change
+- `value`: The new value for the parameter
+
+**Examples**:
+- `{"target": "BLE001", "distance_threshold": 2.5}` - Track beacons up to 2.5 meters away
+- `{"target": "BLE001", "scan_time": 3}` - Scan for 3 seconds instead of 5
+- `{"target": "BLE001", "mac_add": "aa:bb:cc:dd:ee:ff"}` - Start tracking a new beacon
+
+**Multi-Gateway Setup**:
+In deployments with multiple gateways, each gateway has a unique identifier:
+- Gateway 1: `GATEWAY_ID = "BLE001"`
+- Gateway 2: `GATEWAY_ID = "BLE002"` 
+- Gateway 3: `GATEWAY_ID = "BLE003"`
+
+Commands are only processed by the targeted gateway:
+```json
+{"target": "BLE001", "distance_threshold": 5.0}  // Only processed by Gateway 1
+{"target": "BLE002", "mac_add": "new:mac:here"}  // Only processed by Gateway 2
+```
 
 ## Complete Command Reference
 
@@ -278,68 +313,68 @@ For example:
 
 | Command | Type | What It Does | Example | Default | When to Change |
 |---------|------|-------------|---------|---------|----------------|
-| `scan_time` | int | How long each scan lasts (seconds) | `{"scan_time": 3}` | 5 | Shorter for faster response, longer for better detection |
-| `scan_interval` | int | Time between scan starts (0.625ms units) | `{"scan_interval": 80}` | 100 | Lower for more frequent scanning (more power) |
-| `scan_window` | int | How long to actively listen each interval | `{"scan_window": 79}` | 99 | Should be slightly less than interval |
-| `active_scan` | bool | Request additional info from beacons | `{"active_scan": false}` | true | Disable to save power, enable for more beacon data |
+| `scan_time` | int | How long each scan lasts (seconds) | `{"target": "BLE001", "scan_time": 3}` | 5 | Shorter for faster response, longer for better detection |
+| `scan_interval` | int | Time between scan starts (0.625ms units) | `{"target": "BLE001", "scan_interval": 80}` | 100 | Lower for more frequent scanning (more power) |
+| `scan_window` | int | How long to actively listen each interval | `{"target": "BLE001", "scan_window": 79}` | 99 | Should be slightly less than interval |
+| `active_scan` | bool | Request additional info from beacons | `{"target": "BLE001", "active_scan": false}` | true | Disable to save power, enable for more beacon data |
 
 **Real-world examples**:
-- **Fast tracking mode**: `{"scan_time": 2}`, `{"scan_interval": 50}` - Quick response, higher power use
-- **Power saving mode**: `{"scan_time": 8}`, `{"active_scan": false}` - Longer battery life, slower response
+- **Fast tracking mode**: `{"target": "BLE001", "scan_time": 2}`, `{"target": "BLE001", "scan_interval": 50}` - Quick response, higher power use
+- **Power saving mode**: `{"target": "BLE001", "scan_time": 8}`, `{"target": "BLE001", "active_scan": false}` - Longer battery life, slower response
 
 ### Distance & RSSI Parameters - Control Distance Calculations
 
 | Command | Type | What It Does | Example | Default | When to Adjust |
 |---------|------|-------------|---------|---------|----------------|
-| `tx_power` | int | Expected signal strength at 1 meter | `{"tx_power": -65}` | -59 | Different for each beacon type - measure at 1m distance |
-| `env_factor` | float | How much environment affects signals | `{"env_factor": 3.0}` | 2.7 | 2.0=outdoor, 2.7=indoor, 3.5=factory with metal |
-| `distance_threshold` | float | Maximum distance to track beacons | `{"distance_threshold": 2.5}` | 1.0 | Larger for wider coverage, smaller for close tracking only |
-| `distance_correction` | float | Fine-tune distance accuracy | `{"distance_correction": -0.3}` | -0.5 | Negative=closer, positive=further, calibrate by measurement |
+| `tx_power` | int | Expected signal strength at 1 meter | `{"target": "BLE001", "tx_power": -65}` | -59 | Different for each beacon type - measure at 1m distance |
+| `env_factor` | float | How much environment affects signals | `{"target": "BLE001", "env_factor": 3.0}` | 2.7 | 2.0=outdoor, 2.7=indoor, 3.5=factory with metal |
+| `distance_threshold` | float | Maximum distance to track beacons | `{"target": "BLE001", "distance_threshold": 2.5}` | 1.0 | Larger for wider coverage, smaller for close tracking only |
+| `distance_correction` | float | Fine-tune distance accuracy | `{"target": "BLE001", "distance_correction": -0.3}` | -0.5 | Negative=closer, positive=further, calibrate by measurement |
 
 **Calibration process**:
 1. Place beacon exactly 1 meter away
 2. Read RSSI value from debug output
-3. Send `{"tx_power": [observed_rssi]}`
+3. Send `{"target": "BLE001", "tx_power": [observed_rssi]}`
 4. Test at known distances and adjust `distance_correction` if needed
 
 ### Filter Parameters - Control Signal Smoothing
 
 | Command | Type | What It Does | Example | Default | When to Change |
 |---------|------|-------------|---------|---------|----------------|
-| `process_noise` | float | How much distance can change between measurements | `{"process_noise": 0.02}` | 0.01 | Higher for fast-moving beacons, lower for stationary |
-| `measurement_noise` | float | How much to trust each measurement | `{"measurement_noise": 0.8}` | 0.5 | Higher for noisy environments, lower for clean signals |
-| `window_size` | int | Number of measurements to average | `{"window_size": 8}` | 5 | Larger for smoother but slower response |
+| `process_noise` | float | How much distance can change between measurements | `{"target": "BLE001", "process_noise": 0.02}` | 0.01 | Higher for fast-moving beacons, lower for stationary |
+| `measurement_noise` | float | How much to trust each measurement | `{"target": "BLE001", "measurement_noise": 0.8}` | 0.5 | Higher for noisy environments, lower for clean signals |
+| `window_size` | int | Number of measurements to average | `{"target": "BLE001", "window_size": 8}` | 5 | Larger for smoother but slower response |
 
 **Tuning for different scenarios**:
-- **Fast-moving person**: `{"process_noise": 0.05}`, `{"window_size": 3}` - Quick response
-- **Stationary asset**: `{"process_noise": 0.005}`, `{"window_size": 10}` - Very stable readings
-- **Noisy environment**: `{"measurement_noise": 1.0}`, `{"window_size": 8}` - Heavy smoothing
+- **Fast-moving person**: `{"target": "BLE001", "process_noise": 0.05}`, `{"target": "BLE001", "window_size": 3}` - Quick response
+- **Stationary asset**: `{"target": "BLE001", "process_noise": 0.005}`, `{"target": "BLE001", "window_size": 10}` - Very stable readings
+- **Noisy environment**: `{"target": "BLE001", "measurement_noise": 1.0}`, `{"target": "BLE001", "window_size": 8}` - Heavy smoothing
 
 ### Beacon Tracking Parameters
 
 | Command | Type | What It Does | Example | Default | When to Change |
 |---------|------|-------------|---------|---------|----------------|
-| `beacon_timeout` | int | Seconds before beacon is considered gone | `{"beacon_timeout": 15}` | 10 | Longer for intermittent connections, shorter for fast detection |
+| `beacon_timeout` | int | Seconds before beacon is considered gone | `{"target": "BLE001", "beacon_timeout": 15}` | 10 | Longer for intermittent connections, shorter for fast detection |
 
 ### MAC Address Management - Control Which Beacons to Track
 
 | Command | Type | What It Does | Example | When to Use |
 |---------|------|-------------|---------|-------------|
-| `mac_add` | string | Add a beacon to the tracking list | `{"mac_add": "aa:bb:cc:dd:ee:ff"}` | When you get a new beacon to track |
-| `mac_remove` | string | Remove a beacon from tracking | `{"mac_remove": "08:05:04:03:02:01"}` | When a beacon is no longer needed |
-| `mac_clear` | bool | Remove all beacons from tracking | `{"mac_clear": true}` | When starting fresh with new beacons |
-| `mac_enable` | bool | Turn filtering on/off | `{"mac_enable": false}` | false=track all beacons, true=only track listed ones |
+| `mac_add` | string | Add a beacon to the tracking list | `{"target": "BLE001", "mac_add": "aa:bb:cc:dd:ee:ff"}` | When you get a new beacon to track |
+| `mac_remove` | string | Remove a beacon from tracking | `{"target": "BLE001", "mac_remove": "08:05:04:03:02:01"}` | When a beacon is no longer needed |
+| `mac_clear` | bool | Remove all beacons from tracking | `{"target": "BLE001", "mac_clear": true}` | When starting fresh with new beacons |
+| `mac_enable` | bool | Turn filtering on/off | `{"target": "BLE001", "mac_enable": false}` | false=track all beacons, true=only track listed ones |
 
-**Finding MAC addresses**: Check your beacon documentation, use a BLE scanner app on your phone, or temporarily disable filtering (`{"mac_enable": false}`) and watch the debug output.
+**Finding MAC addresses**: Check your beacon documentation, use a BLE scanner app on your phone, or temporarily disable filtering (`{"target": "BLE001", "mac_enable": false}`) and watch the debug output.
 
 ### System Responses
 
-The system confirms every command:
+The system confirms every command and identifies which gateway processed it:
 
-**Success**: `{"status":"ok","message":"config updated"}`
-**Error**: `{"status":"error","message":"invalid config"}`
+**Success**: `{"status":"ok","gateway":"BLE001","message":"config updated"}`
+**Error**: `{"status":"error","gateway":"BLE001","message":"invalid config"}`
 
-If you get an error, check your JSON syntax and make sure the parameter name is correct.
+If you get an error, check your JSON syntax and make sure the parameter name and target gateway are correct.
 
 ## Data Output Tutorial
 
@@ -396,10 +431,10 @@ This gives you a complete picture of all tracked beacons at once.
 You want to track vehicles in a parking lot using beacons with 5-meter range:
 
 ```json
-{"distance_threshold": 5.0}
-{"beacon_timeout": 30}
-{"env_factor": 2.2}
-{"tx_power": -55}
+{"target": "BLE001", "distance_threshold": 5.0}
+{"target": "BLE001", "beacon_timeout": 30}
+{"target": "BLE001", "env_factor": 2.2}
+{"target": "BLE001", "tx_power": -55}
 ```
 
 **Why these settings**:
@@ -413,11 +448,11 @@ You want to track vehicles in a parking lot using beacons with 5-meter range:
 Tracking people in an office building:
 
 ```json
-{"distance_threshold": 3.0}
-{"env_factor": 2.8}
-{"measurement_noise": 0.8}
-{"window_size": 7}
-{"beacon_timeout": 15}
+{"target": "BLE001", "distance_threshold": 3.0}
+{"target": "BLE001", "env_factor": 2.8}
+{"target": "BLE001", "measurement_noise": 0.8}
+{"target": "BLE001", "window_size": 7}
+{"target": "BLE001", "beacon_timeout": 15}
 ```
 
 **Reasoning**:
@@ -431,11 +466,11 @@ Tracking people in an office building:
 Tracking expensive equipment that must stay in designated areas:
 
 ```json
-{"distance_threshold": 1.5}
-{"process_noise": 0.005}
-{"measurement_noise": 0.3}
-{"window_size": 10}
-{"beacon_timeout": 5}
+{"target": "BLE001", "distance_threshold": 1.5}
+{"target": "BLE001", "process_noise": 0.005}
+{"target": "BLE001", "measurement_noise": 0.3}
+{"target": "BLE001", "window_size": 10}
+{"target": "BLE001", "beacon_timeout": 5}
 ```
 
 **Logic**:
@@ -449,14 +484,34 @@ Tracking expensive equipment that must stay in designated areas:
 Setting up tracking for a new set of employee badges:
 
 ```json
-{"mac_clear": true}
-{"mac_add": "employee1:mac:address"}
-{"mac_add": "employee2:mac:address"}
-{"mac_add": "employee3:mac:address"}
-{"mac_enable": true}
+{"target": "BLE001", "mac_clear": true}
+{"target": "BLE001", "mac_add": "employee1:mac:address"}
+{"target": "BLE001", "mac_add": "employee2:mac:address"}
+{"target": "BLE001", "mac_add": "employee3:mac:address"}
+{"target": "BLE001", "mac_enable": true}
 ```
 
 This clears any old beacons and sets up tracking for the new ones.
+
+### Example 5: Multi-Gateway Coordination
+
+Managing different gateways in a large facility:
+
+```json
+// Configure Gateway 1 for warehouse area
+{"target": "BLE001", "distance_threshold": 10.0}
+{"target": "BLE001", "env_factor": 3.2}
+
+// Configure Gateway 2 for office area  
+{"target": "BLE002", "distance_threshold": 3.0}
+{"target": "BLE002", "env_factor": 2.8}
+
+// Configure Gateway 3 for outdoor loading dock
+{"target": "BLE003", "distance_threshold": 15.0} 
+{"target": "BLE003", "env_factor": 2.2}
+```
+
+Each gateway can be optimized for its specific environment and use case.
 
 ## Troubleshooting Guide
 
@@ -465,10 +520,10 @@ This clears any old beacons and sets up tracking for the new ones.
 **Symptoms**: Debug output shows "0 innerhalb Schwellenwert" (0 within threshold)
 
 **Solutions**:
-1. **Check distance threshold**: `{"distance_threshold": 10.0}` to test with larger range
-2. **Disable MAC filtering temporarily**: `{"mac_enable": false}` to see all devices
+1. **Check distance threshold**: `{"target": "BLE001", "distance_threshold": 10.0}` to test with larger range
+2. **Disable MAC filtering temporarily**: `{"target": "BLE001", "mac_enable": false}` to see all devices
 3. **Verify beacons are advertising**: Use a phone BLE scanner app to confirm
-4. **Check TX power calibration**: Try `{"tx_power": -50}` or `{"tx_power": -70}`
+4. **Check TX power calibration**: Try `{"target": "BLE001", "tx_power": -50}` or `{"target": "BLE001", "tx_power": -70}`
 
 ### Problem: Distance Readings Are Wrong
 
@@ -477,7 +532,7 @@ This clears any old beacons and sets up tracking for the new ones.
 **Solutions**:
 1. **Calibrate TX power**: Measure RSSI at exactly 1 meter, use that value
 2. **Adjust environmental factor**: Higher for more obstacles, lower for open space
-3. **Use distance correction**: `{"distance_correction": 1.5}` to add meters
+3. **Use distance correction**: `{"target": "BLE001", "distance_correction": 1.5}` to add meters
 4. **Check for interference**: WiFi, microwaves, other 2.4GHz devices affect readings
 
 ### Problem: Readings Are Too Jumpy
@@ -485,18 +540,18 @@ This clears any old beacons and sets up tracking for the new ones.
 **Symptoms**: Distance jumps between 0.8m and 1.5m rapidly
 
 **Solutions**:
-1. **Increase measurement noise**: `{"measurement_noise": 1.0}` for more smoothing
-2. **Larger window size**: `{"window_size": 10}` for more averaging
-3. **Lower process noise**: `{"process_noise": 0.005}` for more stable readings
+1. **Increase measurement noise**: `{"target": "BLE001", "measurement_noise": 1.0}` for more smoothing
+2. **Larger window size**: `{"target": "BLE001", "window_size": 10}` for more averaging
+3. **Lower process noise**: `{"target": "BLE001", "process_noise": 0.005}` for more stable readings
 
 ### Problem: System Responds Too Slowly
 
 **Symptoms**: Takes 10+ seconds to detect beacon movement
 
 **Solutions**:
-1. **Faster scanning**: `{"scan_time": 2}`, `{"scan_interval": 50}`
-2. **Smaller window**: `{"window_size": 3}` for less averaging delay
-3. **Higher process noise**: `{"process_noise": 0.02}` for quicker response
+1. **Faster scanning**: `{"target": "BLE001", "scan_time": 2}`, `{"target": "BLE001", "scan_interval": 50}`
+2. **Smaller window**: `{"target": "BLE001", "window_size": 3}` for less averaging delay
+3. **Higher process noise**: `{"target": "BLE001", "process_noise": 0.02}` for quicker response
 
 ### Problem: Configuration Commands Ignored
 
@@ -742,23 +797,4 @@ This Software is licensed, not sold. All rights not expressly granted herein are
 - You may NOT redistribute or sublicense the Software in any form
 - You may NOT remove or alter any copyright notices or proprietary labels
 
-**PERMISSIONS:**
-- Personal use and evaluation are permitted for legitimate testing purposes only
-- Academic research use requires prior written permission from the copyright holder
-- Any commercial use, including but not limited to integration into products or services, requires explicit written license agreement
-
-**DISCLAIMER:**
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL CHRISTIAN ZEH BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-### Contact for Licensing
-
-For licensing inquiries, commercial use permissions, or any questions regarding this software:
-
-**Christian Zeh**  
-Email: thetechbrainhub@gmail.com
-
-All licensing agreements must be in writing and signed by Christian Zeh to be valid.
-
----
-
-*This license is governed by German law. Any disputes shall be resolved exclusively in German courts.*
+**
